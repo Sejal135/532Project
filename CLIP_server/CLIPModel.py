@@ -3,7 +3,6 @@ from queue import Queue, Empty
 from threading import Thread, Event
 import time
 import torch
-import numpy as np
 from ImageDirectory import ImageDirectory
 # Probably will have to account for possibility that you can only have one clip model in memory at a time
 

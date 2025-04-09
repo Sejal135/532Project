@@ -1,2 +1,4 @@
 # name of my venv
 clip-project/
+# python cache
+**__pycache__**
