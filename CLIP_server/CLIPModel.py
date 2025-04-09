@@ -23,7 +23,9 @@ class EmbeddingRequest:
 
 class CLIP:
     def __init__(self, batch_size: int, timeout: float, model_id: str = "openai/clip-vit-base-patch32"):
+        print(f"Loading model {model_id}...")
         self.model, self.tokenizer = self._get_tokenizer_and_model(model_id)
+        print("Model loaded successfully.")
         # Batch size for processing requests
         self.batch_size = batch_size
         # Timeout for processing requests
@@ -33,7 +35,9 @@ class CLIP:
 
         # Start the embedding thread
         self.running = True
+        print("Starting embedding thread...")
         self.thread = Thread(target=self._start_processing)
+        print("Embedding thread started.")
         self.thread.daemon = True
         self.thread.start()
 
@@ -81,6 +85,7 @@ class CLIP:
         raise NotImplementedError("Batch processing not implemented yet")
     
     def shutdown(self):
+        print("Shutting down embedding thread...")
         self.running = False
         self.thread.join()
 
@@ -97,10 +102,10 @@ class TextCLIP(CLIP):
         """Process batch of texts and set results in requests."""
         inputs = self.tokenizer(texts, return_tensors="pt", padding=True, truncation=True)
         with torch.no_grad():
-            outputs = self.model.get_text_features(**inputs)
+            outputs = self.model(**inputs)
         
         # Convert to numpy for easier handling
-        embeddings = outputs.detach().cpu().numpy()
+        embeddings = outputs.text_embeds.detach().cpu().numpy()
         
         # Distribute results back to requesters
         for i, request in enumerate(requests):
@@ -119,10 +124,10 @@ class ImageCLIP(CLIP):
         """Process batch of images and set results in requests."""
         image_batch = [self.images.get_image(path) for path in image_paths]
         with torch.no_grad():
-            outputs = self.model.get_image_features(**image_batch)
+            outputs = self.model(**image_batch)
         
         # Convert to numpy for easier handling
-        embeddings = outputs.detach().cpu().numpy()
+        embeddings = outputs.image_embeds.detach().cpu().numpy()
         
         # Distribute results back to requesters
         for i, request in enumerate(requests):
