@@ -37,9 +37,9 @@ class CLIP:
         self.running = True
         print("Starting embedding thread...")
         self.thread = Thread(target=self._start_processing)
-        print("Embedding thread started.")
         self.thread.daemon = True
         self.thread.start()
+        print("Embedding thread started.")
 
     def _get_tokenizer_and_model(self, model_id):
         return None, None

@@ -5,8 +5,8 @@ from CLIPModel import TextCLIP, ImageCLIP
 from fastapi import FastAPI, Request, HTTPException
 
 app = FastAPI(title="CLIP Server")
-text_model = TextCLIP(batch_size=32, timeout=2.0)
-image_model = ImageCLIP(batch_size=32, timeout=2.0, image_dir="/Users/samonuallain/532Project/images")
+text_model = TextCLIP(batch_size=32, timeout=5.0)
+image_model = ImageCLIP(batch_size=32, timeout=5.0, image_dir="/Users/samonuallain/532Project/images")
 
 @app.get("/")
 def home():
