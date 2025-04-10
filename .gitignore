@@ -2,3 +2,5 @@
 clip-project/
 # python cache
 **__pycache__**
+
+.venv
