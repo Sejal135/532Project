@@ -1,11 +1,10 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import udf
+from pyspark.sql.functions import udf, current_timestamp
 from pyspark.sql.types import ArrayType, FloatType
 import numpy as np
 from PIL import Image
 from pyspark.ml.image import ImageSchema
 from pyspark.ml.linalg import DenseVector, VectorUDT
-
 
 spark = SparkSession.builder.appName("ImagePreprocessing").getOrCreate()
 
@@ -28,7 +27,8 @@ def preprocess_image(dataframe):
 
         ImageSchema.imageFields
         img2vec = udf(image_to_vector, VectorUDT())
-        df = dataframe.withColumn('vecs', img2vec("image"))
+        df = dataframe.withColumn('vecs', img2vec("image")).withColumn('preprocess_time', current_timestamp())
+
         return df
     except Exception as e:
         print(e)
@@ -51,4 +51,5 @@ def vector_to_image(dataframe, index):
         print(e)
 
 df = preprocess_image(image_df)
+df.show()
 vector_to_image(df, 0)
