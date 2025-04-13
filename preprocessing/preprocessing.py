@@ -89,7 +89,8 @@ def tensor_to_img(img_tensor):
         std=[1 / 0.26862954, 1 / 0.26130258, 1 / 0.27577711]
     )
     tensor = unnormalize(tensor).clamp(0, 1)
-    image = transforms.ToPILImage(tensor)
+    to_pil = transforms.ToPILImage()
+    image = to_pil(tensor)
     image.show()
 
 
