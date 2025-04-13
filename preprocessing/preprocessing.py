@@ -8,9 +8,8 @@ from pyspark.ml.linalg import DenseVector, VectorUDT
 
 spark = SparkSession.builder.appName("ImagePreprocessing").getOrCreate()
 
-# A different file path will be used for this part later, I just used test3.png to make sure it works.
-# Feel free to add an image into this directory and replace the path here with the image file's name to test it out.
-image_df = spark.read.format("image").load("./test3.png")
+IMAGE_DIR = "images/"
+image_df = spark.read.format("image").load(IMAGE_DIR)
 
 def preprocess_image(dataframe):
     try:
@@ -50,6 +49,8 @@ def vector_to_image(dataframe, index):
     except Exception as e:
         print(e)
 
-df = preprocess_image(image_df)
-df.show()
-vector_to_image(df, 0)
+
+vectorized_df = preprocess_image(image_df)
+vectorized_df.select("image.origin", "vecs", "preprocess_time").show()
+
+vector_to_image(vectorized_df, 0)
