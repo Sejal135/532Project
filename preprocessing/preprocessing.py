@@ -27,7 +27,7 @@ spark = SparkSession.builder.appName("ImagePreprocessing").getOrCreate()
 IMAGE_DIR = "images/"
 
 # Loads all of the images into a dataframe
-image_df = spark.read.format("image").load(IMAGE_DIR)
+image_df = spark.read.format("image").load("./images/test7.png")
 
 def preprocess_image(dataframe):
     try:
@@ -95,4 +95,7 @@ def tensor_to_img(img_tensor):
 
 
 vectorized_df = preprocess_image(image_df)
-vectorized_df.show()
+#vectorized_df.show()
+
+for i in range(vectorized_df.count()):
+    tensor_to_img(vectorized_df.collect()[i]["tensors"])
