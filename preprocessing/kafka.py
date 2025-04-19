@@ -383,14 +383,246 @@ def process_image(image, metadata, index=None):
         return {"status": "error", "index": index, "error": str(e)}
 
 
+class JsonMessageSerializer:
+    """Handles serialization and deserialization of JSON messages."""
+
+    def __init__(self):
+        self.logger = logging.getLogger("JsonMessageSerializer")
+
+    def serialize_message(self, message_dict):
+        """
+        Serialize a Python dictionary to a JSON string.
+
+        Args:
+            message_dict: Dictionary to serialize
+
+        Returns:
+            JSON string
+        """
+        self.logger.debug(f"Serializing JSON message")
+
+        # Add timestamp if not present
+        if "timestamp" not in message_dict:
+            message_dict["timestamp"] = datetime.now().isoformat()
+
+        # Convert to JSON string
+        json_str = json.dumps(message_dict)
+        self.logger.debug(f"Message serialized. Size: {len(json_str)} bytes")
+
+        return json_str
+
+    def deserialize_message(self, json_str):
+        """
+        Deserialize a JSON string to a Python dictionary.
+
+        Args:
+            json_str: JSON string to deserialize
+
+        Returns:
+            Python dictionary
+        """
+        self.logger.debug(f"Deserializing JSON message")
+        message_dict = json.loads(json_str)
+        self.logger.debug(f"Message deserialized successfully")
+
+        return message_dict
+
+
+class TextProducer:
+    """Kafka producer for sending text messages in JSON format."""
+
+    def __init__(self, config):
+        """
+        Initialize the text producer with Kafka configuration.
+
+        Args:
+            config: KafkaConfig object with connection settings
+        """
+        self.producer_config = config.get_producer_config()
+        self.producer = Producer(self.producer_config)
+        self.serializer = JsonMessageSerializer()
+        self.logger = logging.getLogger("TextProducer")
+        self.logger.info(
+            f"TextProducer initialized with config: {self.producer_config}"
+        )
+
+        # Add callback for delivery reports
+        self.producer_callbacks = 0
+        self.producer_errors = 0
+
+    def delivery_callback(self, err, msg):
+        """Callback function for producer delivery reports."""
+        if err is not None:
+            self.producer_errors += 1
+            self.logger.error(f"Message delivery failed: {err}")
+        else:
+            self.producer_callbacks += 1
+            self.logger.debug(
+                f"Message delivered to {msg.topic()} [{msg.partition()}] at offset {msg.offset()}"
+            )
+
+    def send_message(self, topic, message_dict):
+        """
+        Send a JSON message to a Kafka topic.
+
+        Args:
+            topic: Kafka topic to send message to
+            message_dict: Dictionary to be serialized and sent
+            message_key: Optional message key (string)
+        """
+        self.logger.info(f"Sending message to topic '{topic}'")
+
+        # Serialize the message
+        json_str = self.serializer.serialize_message(message_dict)
+        message = json_str.encode("utf-8")
+
+        message_size_kb = len(message) / 1024
+        self.logger.info(f"Message size: {message_size_kb:.2f} KB")
+
+        # Send message to Kafka topic
+        try:
+            self.producer.produce(topic, value=message, callback=self.delivery_callback)
+            self.logger.debug(f"Message produced to topic '{topic}'")
+            self.producer.poll(0)  # Trigger delivery reports
+        except BufferError:
+            self.logger.warning("Local producer queue is full, waiting for space...")
+            self.producer.flush()
+            self.producer.produce(topic, value=message, callback=self.delivery_callback)
+        except Exception as e:
+            self.logger.error(f"Error producing message: {str(e)}")
+            raise
+
+    def flush(self, timeout=None):
+        """Flush the producer to ensure all messages are sent."""
+        messages_pending = self.producer.flush(timeout)
+        if messages_pending > 0:
+            self.logger.warning(
+                f"{messages_pending} messages still pending after flush timeout"
+            )
+        else:
+            self.logger.info("All messages flushed successfully")
+        return messages_pending
+
+    def close(self):
+        """Close the producer connection."""
+        self.logger.info("Closing producer connection")
+        self.flush()
+        self.logger.info(
+            f"Producer stats: {self.producer_callbacks} successful deliveries, {self.producer_errors} errors"
+        )
+
+
+class TextConsumer:
+    """Kafka consumer for receiving text messages in JSON format."""
+
+    def __init__(self, config, topics):
+        """
+        Initialize the text consumer with Kafka configuration.
+
+        Args:
+            config: KafkaConfig object with connection settings
+            topics: List of topics to subscribe to
+        """
+        self.consumer_config = config.get_consumer_config()
+        self.consumer = Consumer(self.consumer_config)
+        self.topics = topics if isinstance(topics, list) else [topics]
+        self.consumer.subscribe(self.topics)
+        self.serializer = JsonMessageSerializer()
+        self.logger = logging.getLogger("TextConsumer")
+        self.logger.info(f"TextConsumer initialized for topics: {self.topics}")
+
+        # Track metrics
+        self.messages_received = 0
+        self.errors_encountered = 0
+        self.total_bytes_received = 0
+
+    def receive_message(self, timeout=1.0):
+        """
+        Poll for and receive a message from subscribed topics.
+
+        Args:
+            timeout: Timeout in seconds to wait for a message
+
+        Returns:
+            message_dict or None if no message
+            message_dict is the JSON to dictionary
+        """
+        self.logger.debug(f"Polling for messages with timeout {timeout}s")
+        msg = self.consumer.poll(timeout)
+
+        if msg is None:
+            self.logger.debug("No message received during poll")
+            return None
+
+        if msg.error():
+            self.errors_encountered += 1
+            error_code = msg.error().code()
+            if error_code == KafkaError._PARTITION_EOF:
+                self.logger.info(
+                    f"Reached end of partition {msg.topic()}-{msg.partition()}"
+                )
+            else:
+                self.logger.error(f"Error while consuming message: {msg.error()}")
+            return None
+
+        # Message received successfully
+        self.messages_received += 1
+        message_size = len(msg.value()) if msg.value() else 0
+        self.total_bytes_received += message_size
+
+        self.logger.info(
+            f"Received message from {msg.topic()} [{msg.partition()}] at offset {msg.offset()}, size: {message_size} bytes"
+        )
+
+        try:
+            # Parse message value
+            value = msg.value().decode("utf-8")
+            message_dict = self.serializer.deserialize_message(value)
+
+            self.logger.info("Message parsed successfully.")
+            return message_dict
+
+        except json.JSONDecodeError as e:
+            self.errors_encountered += 1
+            self.logger.error(f"Failed to decode JSON: {str(e)}")
+            return None
+        except Exception as e:
+            self.errors_encountered += 1
+            self.logger.error(f"Error deserializing message: {str(e)}")
+            return None
+
+    def commit(self):
+        """Commit offsets."""
+        self.logger.debug("Committing offsets")
+        self.consumer.commit()
+
+    def close(self):
+        """Close the consumer connection."""
+        self.logger.info("Closing consumer connection")
+        self.consumer.close()
+        self.logger.info(
+            f"Consumer stats: {self.messages_received} messages received, "
+            f"{self.errors_encountered} errors, "
+            f"{self.total_bytes_received} bytes total data"
+        )
+
+
 # Example usage
+"""
+Take a look at the sending a json message for our project. Replace the http server with kafka and still keep the batch processing already setup in the CLIP model. Kafka would 
+handle sending and receiving message instead. Run docker-compose up to setup the docker container with kafka
+
+"""
 if __name__ == "__main__":
     # Configure logging for main
     logger = logging.getLogger("KafkaImageExample")
 
     # Configuration
     logger.info("Initializing Kafka configuration")
-    config = KafkaConfig(bootstrap_servers="localhost:9092")
+    config = KafkaConfig(
+        bootstrap_servers="localhost:9092"
+    )  # The server config with docker also uses this endpoint
+    # Can access the kafka ui for some graphical operations at localhost:8080
 
     # Example 1: Send an image
     logger.info("Example 1: Sending a single image")
@@ -416,3 +648,45 @@ if __name__ == "__main__":
     # Could create the EmbeddingRequest here and queue it. Could also use this received instead of the post http request
     # Probably better for performance since no need for TCP connection with HTTP requests at large scale
     consumer.close()
+
+    # Example 1: Send an json message
+    logger.info("Example 1: Sending a json message")
+    text_producer = TextProducer(config)
+
+    try:
+        # Send a simple message
+        text_producer.send_message(
+            "text-topic",
+            {
+                "message_type": "notification",
+                "severity": "info",
+                "content": "This is a test message",
+                "user_id": 12345,
+            },
+        )
+
+        # Send a message with metadata about an image
+        text_producer.send_message(
+            "image-metadata",
+            {
+                "message_type": "image_metadata",
+                "image_id": "img_12345",
+                "filename": "example.jpg",
+                "dimensions": "800x600",
+                "size_bytes": 102400,
+                "tags": ["example", "test", "image"],
+            },
+        )
+    except Exception as e:
+        logger.error(f"Error sending message: {str(e)}", exc_info=True)
+    finally:
+        text_producer.close()
+
+    # Example 2: Receive a message
+    logger.info("Example: Consuming text messages")
+    text_consumer = TextConsumer(config, ["text-topic", "image-metadata"])
+    message = text_consumer.receive_message(timeout=1.0)
+    # then process the dictionary object to get the image path,...
+    # Could create the EmbeddingRequest here and queue it. Could also use this received instead of the post http request
+    # Probably better for performance since no need for TCP connection with HTTP requests at large scale
+    text_consumer.close()
