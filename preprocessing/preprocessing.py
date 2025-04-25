@@ -94,10 +94,5 @@ def tensor_to_img(img_tensor):
     image = to_pil(tensor)
     image.show()
 
-# Takes in a dataframe of images, and returns a dataframe of the images and their tensors
-def preprocess_to_dataframe(df):
-    vectorized_df = preprocess_image(df)
-    return vectorized_df
-
 # for i in range(vectorized_df.count()):
 #     tensor_to_img(vectorized_df.collect()[i]["tensors"])
