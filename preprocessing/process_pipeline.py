@@ -1,5 +1,6 @@
 from pyspark.sql import SparkSession
 from preprocessing import preprocess_image
+import time
 
 from kafka import KafkaConfig, SparkRowProducer
 
@@ -31,4 +32,9 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+        while True:
+            time.sleep(1)
+    except Exception as e:
+        exit(0)

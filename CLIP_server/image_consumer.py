@@ -9,7 +9,7 @@ from CLIPModel import ImageCLIP
 from preprocessing.kafka import KafkaConfig, SparkRowConsumer
 
 image_model = ImageCLIP(
-    batch_size=32, timeout=5.0, image_dir="/Users/samonuallain/532Project/images"
+    batch_size=32, timeout=5.0, image_dir="./images"
 )
 
 # Setup Kafka consumer

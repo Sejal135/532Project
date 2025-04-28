@@ -396,7 +396,6 @@ class SparkRowProducer:
         try:
             # Serialize the Row
             serialized_data, headers = self.serializer.serialize_message(row, metadata)
-            print(len(serialized_data))
             if serialized_data is None:
                 raise Exception("Row serialization failed")
 
@@ -407,7 +406,6 @@ class SparkRowProducer:
             self.producer.produce(
                 topic=topic,
                 value=serialized_data,
-                key=serialized_key,
                 callback=self.delivery_callback,
             )
             self.logger.debug(f"Row produced to topic '{topic}'")
@@ -420,7 +418,6 @@ class SparkRowProducer:
             self.producer.produce(
                 topic=topic,
                 value=serialized_data,
-                key=serialized_key,
                 # headers=headers,
                 callback=self.delivery_callback,
             )
