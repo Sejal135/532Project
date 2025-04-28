@@ -1,7 +1,7 @@
 from pyspark.sql import SparkSession
-from preprocessing.preprocessing import preprocess_image
+from preprocessing import preprocess_image
 
-from preprocessing.kafka import KafkaConfig, SparkRowProducer
+from kafka import KafkaConfig, SparkRowProducer
 
 # Configuration
 KAFKA_BOOTSTRAP_SERVERS = "localhost:9092"
