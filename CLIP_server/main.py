@@ -1,3 +1,7 @@
+import sys, os
+sys.path.append(os.getcwd())
+print(sys.path)
+
 from fastapi import FastAPI, Request
 from contextlib import asynccontextmanager
 import uvicorn

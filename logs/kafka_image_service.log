@@ -52,3 +52,15 @@
 2025-04-28 14:26:19 - SparkRowProducer - ERROR - Error producing Row message: KafkaError{code=MSG_SIZE_TOO_LARGE,val=10,str="Unable to produce message: Broker: Message size too large"}
 2025-04-28 14:26:19 - SparkRowProducer - ERROR - Error sending row 0: KafkaError{code=MSG_SIZE_TOO_LARGE,val=10,str="Unable to produce message: Broker: Message size too large"}
 2025-04-28 14:26:19 - py4j.clientserver - INFO - Closing down clientserver connection
+2025-04-28 14:45:35 - KafkaConfig - INFO - Initialized KafkaConfig with bootstrap_servers=localhost:9092
+2025-04-28 14:45:36 - SparkRowSerializer - INFO - SparkRowSerializer initialized
+2025-04-28 14:45:36 - SparkRowProducer - INFO - SparkRowProducer initialized with config: {'bootstrap.servers': 'localhost:9092', 'client.id': 'spark-producer-c9b63df5-5667-4aa9-b094-7780278c10b5'}
+2025-04-28 14:45:36 - SparkRowProducer - INFO - Sending DataFrame rows one by one to topic 'image_embedding_requests'
+2025-04-28 14:45:42 - SparkRowProducer - INFO - Processing 5 rows from DataFrame
+2025-04-28 14:45:42 - SparkRowProducer - INFO - Sending PySpark Row to topic 'image_embedding_requests'
+2025-04-28 14:45:42 - SparkRowProducer - ERROR - Error producing Row message: KafkaError{code=MSG_SIZE_TOO_LARGE,val=10,str="Unable to produce message: Broker: Message size too large"}
+2025-04-28 14:45:42 - SparkRowProducer - ERROR - Error sending row 0: KafkaError{code=MSG_SIZE_TOO_LARGE,val=10,str="Unable to produce message: Broker: Message size too large"}
+2025-04-28 14:45:42 - py4j.clientserver - INFO - Closing down clientserver connection
+2025-04-28 14:48:23 - KafkaConfig - INFO - Initialized KafkaConfig with bootstrap_servers=localhost:9092
+2025-04-28 14:48:23 - SparkRowSerializer - INFO - SparkRowSerializer initialized
+2025-04-28 14:48:23 - SparkRowConsumer - INFO - SparkRowConsumer initialized for topics: ['image_embedding_requests']
