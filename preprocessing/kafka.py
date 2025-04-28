@@ -56,7 +56,16 @@ class KafkaConfig:
         """Return configuration dictionary for Kafka producer."""
         client_id = f"spark-producer-{uuid.uuid4()}"
         self.logger.debug(f"Created producer config with client_id={client_id}")
-        return {"bootstrap.servers": self.bootstrap_servers, "client.id": client_id}
+        return {
+            "bootstrap.servers": self.bootstrap_servers,
+            "client.id": client_id,
+            "message.max.bytes": 10485760,  # 10MB (should match broker setting)
+            "queue.buffering.max.messages": 100000,
+            "queue.buffering.max.kbytes": 1048576,  # 1GB
+            "batch.size": 65536,  # 64KB
+            "linger.ms": 5,  # Wait 5ms to batch messages
+            "compression.type": "snappy",  # Enable compression for large message
+        }
 
     def get_consumer_config(self):
         """Return configuration dictionary for Kafka consumer."""
@@ -65,6 +74,8 @@ class KafkaConfig:
             "bootstrap.servers": self.bootstrap_servers,
             "group.id": self.group_id,
             "auto.offset.reset": "earliest",
+            "fetch.message.max.bytes": 10485760,  # 10MB (should match broker setting)
+            "max.partition.fetch.bytes": 10485760,  # Maximum bytes per partition
         }
 
 
@@ -385,7 +396,7 @@ class SparkRowProducer:
         try:
             # Serialize the Row
             serialized_data, headers = self.serializer.serialize_message(row, metadata)
-            # print(len(serialized_data))
+            print(len(serialized_data))
             if serialized_data is None:
                 raise Exception("Row serialization failed")
 
