@@ -2,7 +2,7 @@ import os
 import pinecone
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col
-from preprocessing import preprocess_image
+from ..preprocessing.preprocessing import preprocess_image
 
 def ingest():
     # 1 Init Pinecone
