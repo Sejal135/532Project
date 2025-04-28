@@ -1,3 +1,4 @@
+from logging import handlers
 import sys, os
 import time
 import signal
@@ -8,9 +9,7 @@ sys.path.append(os.getcwd())
 from CLIPModel import ImageCLIP
 from preprocessing.kafka import KafkaConfig, SparkRowConsumer
 
-image_model = ImageCLIP(
-    batch_size=32, timeout=5.0, image_dir="./images"
-)
+image_model = ImageCLIP(batch_size=32, timeout=5.0, image_dir="./images")
 
 # Setup Kafka consumer
 kafka_config = KafkaConfig(bootstrap_servers="localhost:9092")  # update if needed
@@ -32,7 +31,9 @@ def kafka_image_embedding_handler(row, metadata):
         # embedding = image_model.get_embedding(image_name, timeout=10) # Uncomment when ready
         # TODO: Store embedding and metadata in Pinecone or your storage here
 
-        print(f"[Kafka] Successfully processed embedding for {image_name}") # Changed print message slightly
+        print(
+            f"[Kafka] Successfully processed embedding for {image_name}"
+        )  # Changed print message slightly
     except Exception as e:
         print(f"[Kafka] Error processing image embedding: {e}")
 
@@ -42,26 +43,36 @@ def kafka_image_embedding_handler(row, metadata):
 # Flag to control the main loop
 running = True
 
+
 def signal_handler(sig, frame):
     """Handles termination signals for graceful shutdown."""
     global running
     print("Termination signal received. Shutting down consumer...")
     running = False
 
+
 # Register signal handlers for graceful shutdown
 signal.signal(signal.SIGINT, signal_handler)
 signal.signal(signal.SIGTERM, signal_handler)
 
+processing = False
 
 if __name__ == "__main__":
     print("Starting Kafka consumer...")
     try:
-        # Start consuming in a background thread (assuming start_consuming does this)
-        consumer.start_consuming(handler=kafka_image_embedding_handler)
+        # Stop consuming when reaching max queue, resuming when there is more space
+        while True:
+            # Start consuming in a background thread (assuming start_consuming does this)
+            if not processing and image_model.queue.qsize() < 1000:
+                processing = True
+                consumer.start_consuming(handler=kafka_image_embedding_handler)
+            if processing and image_model.queue.qsize() == 1000:
+                processing = False
+                consumer.stop_consuming()
 
         # Keep the main thread alive while the consumer runs
         while running:
-            time.sleep(1) # Check the running flag every second
+            time.sleep(1)  # Check the running flag every second
 
     except Exception as e:
         print(f"An error occurred during consumer operation: {e}")
