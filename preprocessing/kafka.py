@@ -380,11 +380,12 @@ class SparkRowProducer:
             key: Optional message key
         """
         self.logger.info(f"Sending PySpark Row to topic '{topic}'")
-        serialized_data, headers, serialized_key = None, None, None
+        serialized_data, serialized_key = None, None
 
         try:
             # Serialize the Row
             serialized_data, headers = self.serializer.serialize_message(row, metadata)
+            # print(len(serialized_data))
             if serialized_data is None:
                 raise Exception("Row serialization failed")
 
@@ -396,7 +397,6 @@ class SparkRowProducer:
                 topic=topic,
                 value=serialized_data,
                 key=serialized_key,
-                headers=headers,
                 callback=self.delivery_callback,
             )
             self.logger.debug(f"Row produced to topic '{topic}'")
@@ -410,7 +410,7 @@ class SparkRowProducer:
                 topic=topic,
                 value=serialized_data,
                 key=serialized_key,
-                headers=headers,
+                # headers=headers,
                 callback=self.delivery_callback,
             )
         except Exception as e:
