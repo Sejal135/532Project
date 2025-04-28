@@ -1,5 +1,5 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import udf, current_timestamp
+from pyspark.sql.functions import udf, current_timestamp, col, struct
 from pyspark.sql.types import ArrayType, FloatType
 import numpy as np
 from PIL import Image
@@ -28,7 +28,6 @@ IMAGE_DIR = "images/"
 
 # Loads all of the images into a dataframe
 image_df = spark.read.format("image").load(IMAGE_DIR)
-image_df.show()
 
 def preprocess_image(dataframe):
     try:
@@ -68,13 +67,26 @@ def preprocess_image(dataframe):
                 return DenseVector(tensor.flatten().tolist())
             except Exception as e:
                 print(e)
-                
+
+        # Remove raw bytes field from image
+        def remove_image_data(df):
+            new_image_col = struct(
+                col("image.origin").alias("origin"),
+                col("image.height").alias("height"),
+                col("image.width").alias("width"),
+                col("image.nChannels").alias("nChannels"),
+                col("image.mode").alias("mode")
+            )
+            
+            return df.withColumn("image", new_image_col)
+
         # The final dataframe would contain the images transformed into tensors for CLIP,
         # along with the times at which they were preprocessed
         ImageSchema.imageFields
         img2vec = udf(vector_to_tensor, VectorUDT())
-        df = dataframe.withColumn('tensors', img2vec("image")).withColumn('preprocess_time', current_timestamp())
 
+        df = dataframe.withColumn('tensors', img2vec("image")).withColumn('preprocess_time', current_timestamp())
+        df = remove_image_data(df)
         return df
     except Exception as e:
         print(e)
@@ -96,3 +108,4 @@ def tensor_to_img(img_tensor):
 
 # for i in range(vectorized_df.count()):
 #     tensor_to_img(vectorized_df.collect()[i]["tensors"])
+print(preprocess_image(image_df).first()["image"])
