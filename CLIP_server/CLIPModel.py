@@ -33,6 +33,10 @@ class CLIP:
         # Stores embedding requests to be processed in embedding thread
         self.queue = Queue(1_000)
 
+        # Tracking
+        self.images_processed_last_5_seconds = 0
+        self.start_time = time.time()
+
         # Start the embedding thread
         self.running = True
         print("Starting embedding thread...")
@@ -69,6 +73,7 @@ class CLIP:
                 
                 # Process batch if we've reached batch size
                 if len(curr_batch) >= self.batch_size:
+                    self.images_processed_last_5_seconds += len(curr_batch)
                     self._process_batch(curr_batch, curr_requests)
                     curr_batch = []
                     curr_requests = []
@@ -76,9 +81,15 @@ class CLIP:
             except Empty:
                 # If we have items and timed out waiting for more, process what we have
                 if curr_batch and time.time() - last_arrival >= self.timeout:
+                    self.images_processed_last_5_seconds += len(curr_batch)
                     self._process_batch(curr_batch, curr_requests)
                     curr_batch = []
                     curr_requests = []
+
+            if time.time() - self.start_time > 5:
+                print(f"Throughput: {self.images_processed_last_5_seconds / (time.time() - self.start_time): .2f} requests/sec")
+                self.images_processed_last_5_seconds = 0
+                self.start_time = time.time()
     
     
     def _process_batch(self, batch, requests):
