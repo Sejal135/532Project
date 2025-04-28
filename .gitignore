@@ -4,3 +4,6 @@ clip-project/
 **__pycache__**
 
 .venv
+
+images/
+logs/
