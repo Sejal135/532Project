@@ -63,7 +63,7 @@ flash_attn==2.7.4.post1
 flint==0.0.1
 flute==0.2.0
 flytekit==1.15.3
-foo==.1
+foo==1.0
 Foundation==0.1.0a0.dev1
 ftfy==6.3.1
 fugashi==1.4.0
