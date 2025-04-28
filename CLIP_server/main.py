@@ -29,7 +29,8 @@ def kafka_image_embedding_handler(row, metadata):
         if not image_name:
             raise ValueError("No image_name provided in Kafka message.")
 
-        embedding = image_model.get_embedding(image_name, timeout=10)
+        print(row)
+        # embedding = image_model.get_embedding(image_name, timeout=10)
         # TODO: Store embedding and metadata in Pinecone or your storage here
 
         print(f"[Kafka] Successfully created embedding for {image_name}")
