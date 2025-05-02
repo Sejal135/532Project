@@ -76,21 +76,25 @@ def kafka_image_embedding_handler(row, metadata):
         raise ValueError("Missing 'tensors in Kafka message")
     
     embedding = image_model.get_embedding(vec, timeout=10)
-    vector = embedding.tolist()  # Convert to Python list
+    print("EMBEDDING:", len(embedding), type(embedding))
     
     # Build metadata
     pinecone_metadata = {
         "image_path": image_path,
-        "preprocess_time": row.get("preprocess_time")
+        "preprocess_time": row["preprocess_time"].strftime("%Y-%m-%d %H:%M:%S.%f"),
     }
+    print("METADATA:", pinecone_metadata)
     
     # Upsert into Pinecone
     vid = os.path.basename(image_path)
+    print("Upserting to Pinecone...")
     index.upsert(vectors=[{
         "id": vid,
-        "values": vector,
+        "values": embedding.tolist(),
         "metadata": pinecone_metadata
-    }])
+    }],
+    namespace="image_embeddings")
+    print("Upserted to Pinecone:", vid)
     print(f"[Kafka→Pinecone] Upserted and Successfully processed embedding: {vid}")
     
    
