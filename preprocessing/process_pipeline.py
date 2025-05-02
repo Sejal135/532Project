@@ -1,34 +1,58 @@
 from pyspark.sql import SparkSession
-from preprocessing import preprocess_image
 import time
-
 from kafka import KafkaConfig, SparkRowProducer
+from preprocessing import preprocess_image
+
 
 # Configuration
 KAFKA_BOOTSTRAP_SERVERS = "localhost:9092"
 PROCESSED_IMAGE_TOPIC = "image_embedding_requests"
 CSV_PATH = "image_data.csv"
-IMAGE_DIR = "images/"
+IMAGE_DIR = "flickr30k_images/"
+
+
+config = KafkaConfig(KAFKA_BOOTSTRAP_SERVERS)
+producer = SparkRowProducer(config)
+
+
+def process_partition(partition_iterator):
+    from pyspark.sql import SparkSession
+    from preprocessing import preprocess_image
+
+    config = KafkaConfig(KAFKA_BOOTSTRAP_SERVERS)
+    producer = SparkRowProducer(config)
+
+    rows = list(partition_iterator)
+    if not rows:
+        return
+
+    spark = SparkSession.builder.getOrCreate()
+    df = spark.createDataFrame(rows)
+
+    processed_df = preprocess_image(df)
+
+    # Efficient, streaming-safe send
+    producer.send_partition_rows(
+        PROCESSED_IMAGE_TOPIC, processed_df.rdd.toLocalIterator()
+    )
 
 
 def main():
-    config = KafkaConfig(KAFKA_BOOTSTRAP_SERVERS)
-    prouducer = SparkRowProducer(config)
+    spark = (
+        SparkSession.builder.appName("ImagePreprocessing")
+        .config("spark.driver.memory", "4g")
+        .config("spark.executor.memory", "4g")
+        .config("spark.memory.offHeap.enabled", "true")
+        .config("spark.memory.offHeap.size", "2g")
+        .config("spark.executor.memoryOverhead", "1g")
+        .getOrCreate()
+    )
 
-    # Starts the Spark Session
-    spark = SparkSession.builder.appName("ImagePreprocessing").getOrCreate()
-
-    # Loads all of the images into a dataframe
     image_df = spark.read.format("image").load(IMAGE_DIR)
 
-    # Preprocessed it with Pyspark and Torch
-    preprocessed_df = preprocess_image(image_df)
+    image_df = preprocess_image(image_df)
 
-    if preprocessed_df is None:
-        raise Exception("Preprocessing images with Spark error")
-
-    # Stream the processed image data to CLIP
-    prouducer.send_dataframe_rows(PROCESSED_IMAGE_TOPIC, preprocessed_df)
+    producer.send_partition_rows(PROCESSED_IMAGE_TOPIC, image_df.rdd.toLocalIterator())
 
 
 if __name__ == "__main__":

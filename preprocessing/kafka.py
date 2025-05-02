@@ -425,6 +425,43 @@ class SparkRowProducer:
             self.logger.error(f"Error producing Row message: {str(e)}")
             raise
 
+    def send_partition_rows(self, topic, row_iterator, key_column=None, metadata=None):
+        """
+        Stream rows from a Spark Dataframe to Kafka, avoiding collect().
+
+        Args:
+            topic: Kafka topic to send messages to.
+            row_iterator: An iterator of Row objects from Spark .
+            key_column: Optional column to use as message key.
+            metadata: Optional metadata dict to attach to each message.
+        """
+        self.logger.info(f"Streaming rows to Kafka topic '{topic}'")
+        try:
+            for i, row in enumerate(row_iterator):
+                try:
+                    key = None
+                    if key_column and key_column in row.__fields__:
+                        key = str(row[key_column])
+
+                    payload = row.asDict(recursive=True)
+
+                    if metadata:
+                        payload["metadata"] = metadata
+
+                    self.send_row(topic, row, metadata=metadata)
+
+                    # Log progress for large DataFrames
+                    if (i + 1) % 100 == 0:
+                        self.logger.info(f"Sent {i + 1} rows")
+
+                except Exception as e:
+                    self.logger.warning(f"Failed to send row to Kafka: {e}")
+            self.producer.flush()
+        except Exception as e:
+            self.logger.error(f"Partition streaming error: {e}")
+
+        self.logger.info(f"Completed sending all rows to topic '{topic}'")
+
     def send_dataframe_rows(self, topic, df, key_column=None, metadata=None):
         """
         Send each row of a DataFrame individually to Kafka.
