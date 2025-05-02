@@ -131,11 +131,15 @@ class ImageCLIP(CLIP):
     def _get_tokenizer_and_model(self, model_id):
         return CLIPVisionModelWithProjection.from_pretrained(model_id), None
     
-    def _process_batch(self, image_paths, requests):
+    def _process_batch(self, vectors, requests):
         """Process batch of images and set results in requests."""
-        image_batch = [self.images.get_image(path) for path in image_paths]
+        vectors = torch.stack([torch.tensor(v.toArray().copy().reshape(3, 224, 224)) for v in vectors])
+        # [1, 150528])
+        # batch_size, _, height, width = pixel_values.shape
+        print("Shape:", vectors.shape)
+        inputs = {"pixel_values": vectors}
         with torch.no_grad():
-            outputs = self.model(**image_batch)
+            outputs = self.model(**inputs)
         
         # Convert to numpy for easier handling
         embeddings = outputs.image_embeds.detach().cpu().numpy()

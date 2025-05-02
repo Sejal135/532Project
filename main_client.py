@@ -9,12 +9,14 @@ from io import BytesIO
 def main_client():
 
     # 1️ Load & validate environment variables
-    api_key    = os.getenv("pcsk_3eJ2cq_MYjUEN6HXnQN9X8RTjidvSrKT3AmYsij6oD2URuEccV5r8CyKgz7gNQ6QLf2P7x")
-    pinecone_env   = os.getenv("us-east1-aws")
-    index_name = os.getenv("dense-image-index")
+    api_key    = os.getenv("PINECONE_API_KEY", "pcsk_3eJ2cq_MYjUEN6HXnQN9X8RTjidvSrKT3AmYsij6oD2URuEccV5r8CyKgz7gNQ6QLf2P7x")
+    pinecone_env   = os.getenv("PINECONE_ENV", "us-east1-aws")
+    index_name = os.getenv("PINECONE_INDEX", "dense-image-index")
     clip_url   = os.getenv("CLIP_SERVER_URL", "http://localhost:8000/query_embedding")
 
-    if not all([api_key, pinecone_env, index_name]):
+    print(api_key, pinecone_env, index_name, clip_url)
+
+    if not all(map(len, [api_key, pinecone_env, index_name])):
         sys.exit(
             "Error: please export PINECONE_API_KEY, PINECONE_ENV, and PINECONE_INDEX in your shell."
         )

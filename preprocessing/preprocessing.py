@@ -108,4 +108,4 @@ def tensor_to_img(img_tensor):
 
 # for i in range(vectorized_df.count()):
 #     tensor_to_img(vectorized_df.collect()[i]["tensors"])
-print(preprocess_image(image_df).first()["image"])
+# print(preprocess_image(image_df).first()["image"])
