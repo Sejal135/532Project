@@ -3,8 +3,11 @@ from queue import Queue, Empty
 from threading import Thread, Event
 import time
 import torch
+import logging
 from ImageDirectory import ImageDirectory
 # Probably will have to account for possibility that you can only have one clip model in memory at a time
+
+
 
 class EmbeddingRequest:
     """Tracks a pending embedding request and its eventual result."""
@@ -32,6 +35,7 @@ class CLIP:
         self.timeout = timeout
         # Stores embedding requests to be processed in embedding thread
         self.queue = Queue(1_000)
+        self.logger = logging.getLogger(self.__class__.__name__)
 
         # Tracking
         self.images_processed_last_5_seconds = 0
@@ -87,7 +91,7 @@ class CLIP:
                     curr_requests = []
 
             if time.time() - self.start_time > 5:
-                print(f"Throughput: {self.images_processed_last_5_seconds / (time.time() - self.start_time): .2f} requests/sec")
+                self.logger.info(f"Throughput: {self.images_processed_last_5_seconds / (time.time() - self.start_time): .2f} requests/sec")
                 self.images_processed_last_5_seconds = 0
                 self.start_time = time.time()
     
