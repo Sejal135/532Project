@@ -8,7 +8,7 @@ import concurrent.futures
 SERVER_URL = "http://localhost:8000" # Adjust if your server runs on a different port
 QUERY_ENDPOINT = f"{SERVER_URL}/query_embedding"
 NUM_REQUESTS = 10_000
-MAX_WORKERS = 100 
+MAX_WORKERS = 1000
 
 def generate_random_text(length=20):
     """Generates a random string of fixed length."""
