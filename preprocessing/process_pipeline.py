@@ -8,7 +8,7 @@ from preprocessing import preprocess_image
 KAFKA_BOOTSTRAP_SERVERS = "localhost:9092"
 PROCESSED_IMAGE_TOPIC = "image_embedding_requests"
 CSV_PATH = "image_data.csv"
-IMAGE_DIR = "flickr30k_images/"
+IMAGE_DIR = "images/"
 
 
 config = KafkaConfig(KAFKA_BOOTSTRAP_SERVERS)
@@ -61,4 +61,7 @@ if __name__ == "__main__":
         while True:
             time.sleep(1)
     except Exception as e:
-        exit(0)
+        print(f"An error occurred: {e}") # Print the specific error
+        import traceback
+        traceback.print_exc() # Print the full stack trace
+        exit(1) # Exit with a non-zero code to indicate an error

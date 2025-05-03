@@ -134,9 +134,9 @@ class ImageCLIP(CLIP):
     def _process_batch(self, vectors, requests):
         """Process batch of images and set results in requests."""
         vectors = torch.stack([torch.tensor(v.toArray().copy().reshape(3, 224, 224)) for v in vectors])
+        print(vectors.shape)
         # [1, 150528])
         # batch_size, _, height, width = pixel_values.shape
-        print("Shape:", vectors.shape)
         inputs = {"pixel_values": vectors}
         with torch.no_grad():
             outputs = self.model(**inputs)
