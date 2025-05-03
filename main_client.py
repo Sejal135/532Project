@@ -1,9 +1,32 @@
 import os
 import sys
 import requests
-import pinecone
+from pinecone.grpc import PineconeGRPC as Pinecone
+from pinecone import ServerlessSpec
 from PIL import Image
 from io import BytesIO
+
+def init_pinecone(api_key, index_name, pinecone_dimension):
+    pc = Pinecone(api_key=api_key)
+    if not pc.has_index(index_name):
+        pc.create_index(
+            name=index_name,
+            vector_type="dense",
+            dimension=pinecone_dimension,
+            metric="cosine",
+            spec=ServerlessSpec(
+                cloud="aws",
+                region="us-east-1"
+            ),
+            deletion_protection="disabled",
+            tags={
+                "environment": "development"
+            }
+        )
+
+    print("INDEX:", pc.describe_index(index_name))
+    index = pc.Index(host="dense-image-index-qa9q792.svc.aped-4627-b74a.pinecone.io")
+    return index
 
 
 def main_client():
@@ -22,8 +45,7 @@ def main_client():
         )
 
     # 2️ Initialize Pinecone client
-    pinecone.init(api_key=api_key, environment=pinecone_env)
-    index = pinecone.Index(index_name)
+    index = init_pinecone(api_key, index_name, 512)
 
     # 3️ Get text query & obtain its embedding from your CLIP server
     query = input("Enter your search query: ").strip()
@@ -46,9 +68,11 @@ def main_client():
 
     # 4️ Query Pinecone for the top‐1 match (include our stored metadata)
     result = index.query(
+        namespace="image_embeddings",
         vector=embedding,
         top_k=1,
-        include_metadata=True
+        include_metadata=True,
+        include_values=False,
     )
 
     if not result.matches:

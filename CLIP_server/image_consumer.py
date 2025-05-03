@@ -36,7 +36,6 @@ index_host = os.getenv("PINECONE_INDEX_HOST", "dense-image-index-qa9q792.svc.ape
 pinecone_dimension = int(os.getenv("PINECONE_DIM", "512"))
 
 index = None
-
 def init_pinecone():
     global index
     pc = Pinecone(api_key=api_key)
