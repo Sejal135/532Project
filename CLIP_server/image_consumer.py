@@ -15,7 +15,7 @@ from preprocessing.kafka import KafkaConfig, SparkRowConsumer
 import threading
 
 image_model = ImageCLIP(
-    batch_size=100, timeout=5.0, image_dir="./images"
+    batch_size=50, timeout=5.0, image_dir="./images"
 )
 queue_lock = Lock()
 job_queue = []
