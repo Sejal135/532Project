@@ -96,6 +96,7 @@ if __name__ == "__main__":
     index_name = os.getenv("PINECONE_INDEX", "dense-image-index")
     clip_url   = os.getenv("CLIP_SERVER_URL", "http://localhost:8000/query_embedding")
     num_workers = 100 # Represents how many "people" are sending queries at a time
+    custom_query = True
 
     print(api_key, pinecone_env, index_name, clip_url)
 
@@ -107,76 +108,80 @@ if __name__ == "__main__":
     # 2️ Initialize Pinecone client
     index = init_pinecone(api_key, index_name, 512)
 
-    # Test with multiple queries
-    queries = [
-        "A cat sitting on a couch",
-        "A dog playing with a ball",
-        "A beautiful sunset over the mountains",
-        "A person riding a bicycle in the park",
-        "A group of friends having a picnic"
-    ]
-    queries *= 20 # Keep the multiplication if you want 100 total queries
+    if custom_query:
+        query = input("Enter your search query: ").strip()
+        main_client(index, clip_url, query)
+    else:
+        # Test with multiple queries
+        queries = [
+            "A cat sitting on a couch",
+            "A dog playing with a ball",
+            "A beautiful sunset over the mountains",
+            "A person riding a bicycle in the park",
+            "A group of friends having a picnic"
+        ]
+        queries *= 20 # Keep the multiplication if you want 100 total queries
 
-    # --- Configuration for Batch Submission ---
-    batch_size = 50
-    interval_seconds = 5.0 # Submit queries randomly within this time window per batch
-    # --- End Configuration ---
+        # --- Configuration for Batch Submission ---
+        batch_size = 50
+        interval_seconds = 5.0 # Submit queries randomly within this time window per batch
+        # --- End Configuration ---
 
-    # Remove shuffling if you want the original order within batches
-    # random.shuffle(queries) # Commented out based on the request
+        # Remove shuffling if you want the original order within batches
+        # random.shuffle(queries) # Commented out based on the request
 
-    start_time = time.time()
-    futures = []
-    num_queries = len(queries)
-    num_batches = (num_queries + batch_size - 1) // batch_size
+        start_time = time.time()
+        futures = []
+        num_queries = len(queries)
+        num_batches = (num_queries + batch_size - 1) // batch_size
 
-    with ThreadPoolExecutor(max_workers=max(100, batch_size)) as executor: # Ensure enough workers for a batch
-        print(f"Processing {num_queries} queries in {num_batches} batches of size {batch_size} over {interval_seconds}s intervals.")
+        with ThreadPoolExecutor(max_workers=max(100, batch_size)) as executor: # Ensure enough workers for a batch
+            print(f"Processing {num_queries} queries in {num_batches} batches of size {batch_size} over {interval_seconds}s intervals.")
 
-        for i in tqdm(range(num_batches), desc="Processing Batches"):
-            batch_start_index = i * batch_size
-            batch_end_index = min((i + 1) * batch_size, num_queries)
-            current_batch_queries = queries[batch_start_index:batch_end_index]
+            for i in tqdm(range(num_batches), desc="Processing Batches"):
+                batch_start_index = i * batch_size
+                batch_end_index = min((i + 1) * batch_size, num_queries)
+                current_batch_queries = queries[batch_start_index:batch_end_index]
 
-            if not current_batch_queries:
-                continue
+                if not current_batch_queries:
+                    continue
 
-            interval_start_time = time.time()
-            tasks_for_interval = []
-            for query in current_batch_queries:
-                # Calculate when the task should START within the interval
-                random_start_offset = random.uniform(0, interval_seconds)
-                tasks_for_interval.append((random_start_offset, query))
+                interval_start_time = time.time()
+                tasks_for_interval = []
+                for query in current_batch_queries:
+                    # Calculate when the task should START within the interval
+                    random_start_offset = random.uniform(0, interval_seconds)
+                    tasks_for_interval.append((random_start_offset, query))
 
-            # Sort tasks by their scheduled start time
-            tasks_for_interval.sort(key=lambda x: x[0])
+                # Sort tasks by their scheduled start time
+                tasks_for_interval.sort(key=lambda x: x[0])
 
-            # Submit tasks at their scheduled time within the interval
-            for start_offset, query in tasks_for_interval:
-                current_time_in_interval = time.time() - interval_start_time
-                sleep_duration = max(0, start_offset - current_time_in_interval)
-                time.sleep(sleep_duration)
+                # Submit tasks at their scheduled time within the interval
+                for start_offset, query in tasks_for_interval:
+                    current_time_in_interval = time.time() - interval_start_time
+                    sleep_duration = max(0, start_offset - current_time_in_interval)
+                    time.sleep(sleep_duration)
 
-                # Submit the actual work
-                future = executor.submit(main_client, index, clip_url, query, False)
-                futures.append(future)
+                    # Submit the actual work
+                    future = executor.submit(main_client, index, clip_url, query, False)
+                    futures.append(future)
 
-            # Wait for the remainder of the interval before starting the next batch
-            interval_end_time = time.time()
-            elapsed_in_interval = interval_end_time - interval_start_time
-            sleep_remainder = max(0, interval_seconds - elapsed_in_interval)
-            time.sleep(sleep_remainder)
+                # Wait for the remainder of the interval before starting the next batch
+                interval_end_time = time.time()
+                elapsed_in_interval = interval_end_time - interval_start_time
+                sleep_remainder = max(0, interval_seconds - elapsed_in_interval)
+                time.sleep(sleep_remainder)
 
 
-        print("All queries submitted. Waiting for results...")
-        # Process results as they complete
-        for future in tqdm(as_completed(futures), total=len(futures), desc="Processing queries"):
-            try:
-                future.result() # Retrieve result or raise exception
-            except Exception as e:
-                print(f"Error processing query: {e}")
+            print("All queries submitted. Waiting for results...")
+            # Process results as they complete
+            for future in tqdm(as_completed(futures), total=len(futures), desc="Processing queries"):
+                try:
+                    future.result() # Retrieve result or raise exception
+                except Exception as e:
+                    print(f"Error processing query: {e}")
 
-    end_time = time.time()
-    print(f"Processed {len(queries)} queries in {end_time - start_time:.2f} seconds (including interval delays).")
-    # Note: The queries/sec calculation needs careful interpretation due to batching and delays.
-    # Effective processing rate might be calculated differently depending on what you want to measure.
+        end_time = time.time()
+        print(f"Processed {len(queries)} queries in {end_time - start_time:.2f} seconds (including interval delays).")
+        # Note: The queries/sec calculation needs careful interpretation due to batching and delays.
+        # Effective processing rate might be calculated differently depending on what you want to measure.
