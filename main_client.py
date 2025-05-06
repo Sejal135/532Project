@@ -9,6 +9,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
 from tqdm import tqdm
 import random # Add this import
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def init_pinecone(api_key, index_name, pinecone_dimension):
     pc = Pinecone(api_key=api_key)
@@ -91,10 +94,10 @@ def main_client(index,clip_url="http://localhost:8000", query=None, display=True
                 print(f"Original query: {query}\n Could not open image `{img_path}`: {e}")
 
 if __name__ == "__main__":
-    api_key    = os.getenv("PINECONE_API_KEY", "pcsk_3eJ2cq_MYjUEN6HXnQN9X8RTjidvSrKT3AmYsij6oD2URuEccV5r8CyKgz7gNQ6QLf2P7x")
-    pinecone_env   = os.getenv("PINECONE_ENV", "us-east1-aws")
-    index_name = os.getenv("PINECONE_INDEX", "dense-image-index")
-    clip_url   = os.getenv("CLIP_SERVER_URL", "http://localhost:8000/query_embedding")
+    api_key    = os.getenv("PINECONE_API_KEY")
+    pinecone_env   = os.getenv("PINECONE_ENV")
+    index_name = os.getenv("PINECONE_INDEX")
+    clip_url   = os.getenv("CLIP_SERVER_URL")
     num_workers = 100 # Represents how many "people" are sending queries at a time
     custom_query = True
 

@@ -4,5 +4,5 @@ clip-project/
 **__pycache__**
 
 .venv
-
+.env
 logs/
